@@ -1,7 +1,7 @@
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Define Custom Native ENUM Types
+-- Custom ENUM Types
 CREATE TYPE user_role AS ENUM ('user', 'moderator', 'admin');
 CREATE TYPE verification_status_type AS ENUM ('pending', 'verified', 'rejected');
 CREATE TYPE justice_status_type AS ENUM ('proceeding', 'served', 'stalled');
@@ -19,7 +19,7 @@ CREATE TABLE users (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- PEOPLE / ORGANIZATIONS TABLE
+-- PEOPLE TABLE
 CREATE TABLE people (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(150) NOT NULL,
@@ -38,14 +38,14 @@ CREATE TABLE incidents (
     severity INTEGER NOT NULL CHECK (severity >= 1 AND severity <= 10),
     state VARCHAR(100) NOT NULL,
     city VARCHAR(100) NOT NULL,
-    verification_status verification_status_type NOT NULL DEFAULT 'pending', -- I will ask other users on frontend to verify. If at least 5 people verify then it will be verified and if 5 users reject, then I'll reject it. 
+    verification_status verification_status_type NOT NULL DEFAULT 'pending',
     justice_status justice_status_type NOT NULL DEFAULT 'proceeding',
     created_by UUID REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- JUNCTION TABLE (Many-to-Many: Incidents <-> People/Entities)
+-- INCIDENT CULPRITS JUNCTION TABLE
 CREATE TABLE incident_culprits (
     incident_id UUID REFERENCES incidents(id) ON DELETE CASCADE,
     person_id UUID REFERENCES people(id) ON DELETE CASCADE, 
@@ -53,12 +53,21 @@ CREATE TABLE incident_culprits (
     PRIMARY KEY (incident_id, person_id)
 );
 
+-- INCIDENT VERIFICATIONS TABLE
+CREATE TABLE incident_verifications (
+    incident_id UUID REFERENCES incidents(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    vote vote_type NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (incident_id, user_id)
+);
+
 -- ASSETS TABLE
 CREATE TABLE assets (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     incident_id UUID NOT NULL REFERENCES incidents(id) ON DELETE CASCADE,
     type asset_type NOT NULL,
-    url TEXT NOT NULL, -- I"m assuming this url is of AWS Bucket or something. In case the asset_type is article or archive link, then the frontend should show the articles
+    url TEXT NOT NULL,
     uploaded_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -82,16 +91,7 @@ CREATE TABLE ydcidc_targets (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE incident_verifications (
-    incident_id UUID REFERENCES incidents(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    vote vote_type NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (incident_id, user_id) -- Prevents duplicate voting
-);
-
-
--- INDEXES FOR FAST QUERYING & FILTERING
+-- INDEXES
 CREATE INDEX idx_incidents_location ON incidents(state, city);
 CREATE INDEX idx_incidents_verification ON incidents(verification_status);
 CREATE INDEX idx_assets_incident_id ON assets(incident_id);

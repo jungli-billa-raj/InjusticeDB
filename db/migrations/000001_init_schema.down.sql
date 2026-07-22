@@ -1,0 +1,21 @@
+-- DROP TRIGGERS AND FUNCTIONS
+DROP TRIGGER IF EXISTS update_incidents_updated_at ON incidents;
+DROP FUNCTION IF EXISTS update_updated_at_column();
+
+-- DROP TABLES
+DROP TABLE IF EXISTS ydcidc_targets CASCADE;
+DROP TABLE IF EXISTS comments CASCADE;
+DROP TABLE IF EXISTS assets CASCADE;
+DROP TABLE IF EXISTS incident_verifications CASCADE;
+DROP TABLE IF EXISTS incident_culprits CASCADE;
+DROP TABLE IF EXISTS incidents CASCADE;
+DROP TABLE IF EXISTS people CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+
+-- DROP ENUM TYPES
+DROP TYPE IF EXISTS vote_type;
+DROP TYPE IF EXISTS asset_type;
+DROP TYPE IF EXISTS culprit_status_type;
+DROP TYPE IF EXISTS justice_status_type;
+DROP TYPE IF EXISTS verification_status_type;
+DROP TYPE IF EXISTS user_role;
