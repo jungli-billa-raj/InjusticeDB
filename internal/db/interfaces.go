@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/jungli-billa-raj/InjusticeDB/internal/models"	
+	"github.com/jungli-billa-raj/InjusticeDB/internal/models"
 )
 
 // UserRepository handles authentication & user profiles
@@ -20,7 +20,7 @@ type IncidentRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*models.Incident, error)
 	List(ctx context.Context, filter models.IncidentFilter) ([]*models.Incident, error)
 	UpdateVerificationStatus(ctx context.Context, id uuid.UUID, status models.VerificationStatus) error
-	
+
 	// Revision History (Version Control)
 	CreateRevision(ctx context.Context, revision models.IncidentRevision) (*models.IncidentRevision, error)
 	GetRevision(ctx context.Context, incidentID uuid.UUID, version int) (*models.IncidentRevision, error)
@@ -38,7 +38,7 @@ type CulpritRepository interface {
 // VerificationRepository handles crowd voting
 type VerificationRepository interface {
 	CastVote(ctx context.Context, incidentID uuid.UUID, userID uuid.UUID, vote string) error
-	GetVoteTally(ctx context.Context, incidentID uuid.UUID) (verifyCount int, rejectCount int, error)
+	GetVoteTally(ctx context.Context, incidentID uuid.UUID) (verifyCount int, rejectCount int, err error)
 }
 
 // AssetRepository handles evidence media and web archives

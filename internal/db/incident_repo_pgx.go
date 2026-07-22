@@ -1,0 +1,200 @@
+package db
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"github.com/jungli-billa-raj/InjusticeDB/internal/models"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+type PostgresIncidentRepository struct {
+	pool *pgxpool.Pool
+}
+
+func NewPostgresIncidentRepository(pool *pgxpool.Pool) *PostgresIncidentRepository {
+	return &PostgresIncidentRepository{pool: pool}
+}
+
+// Create inserts a new incident and automatically creates its Version 1 revision inside a single transaction.
+func (r *PostgresIncidentRepository) Create(ctx context.Context, params models.CreateIncidentParams) (*models.Incident, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// 1. Insert Master Incident
+	query := `
+		INSERT INTO incidents (title, full_story, severity, state, city, created_by)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id, title, full_story, severity, state, city, verification_status, justice_status, current_version, created_by, created_at, updated_at;
+	`
+
+	var incident models.Incident
+	err = tx.QueryRow(ctx, query,
+		params.Title,
+		params.FullStory,
+		params.Severity,
+		params.State,
+		params.City,
+		params.CreatedBy,
+	).Scan(
+		&incident.ID,
+		&incident.Title,
+		&incident.FullStory,
+		&incident.Severity,
+		&incident.State,
+		&incident.City,
+		&incident.VerificationStatus,
+		&incident.JusticeStatus,
+		&incident.CurrentVersion,
+		&incident.CreatedBy,
+		&incident.CreatedAt,
+		&incident.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to insert incident: %w", err)
+	}
+
+	// 2. Insert Version 1 into incident_revisions
+	revQuery := `
+		INSERT INTO incident_revisions (incident_id, version_number, title, full_story, change_summary, edited_by)
+		VALUES ($1, $2, $3, $4, $5, $6);
+	`
+	_, err = tx.Exec(ctx, revQuery,
+		incident.ID,
+		1,
+		incident.Title,
+		incident.FullStory,
+		"Initial creation of the record",
+		params.CreatedBy,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create initial revision: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return &incident, nil
+}
+
+// GetByID fetches a single master incident record.
+func (r *PostgresIncidentRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Incident, error) {
+	query := `
+		SELECT id, title, full_story, severity, state, city, verification_status, justice_status, current_version, created_by, created_at, updated_at
+		FROM incidents
+		WHERE id = $1;
+	`
+
+	var incident models.Incident
+	err := r.pool.QueryRow(ctx, query, id).Scan(
+		&incident.ID,
+		&incident.Title,
+		&incident.FullStory,
+		&incident.Severity,
+		&incident.State,
+		&incident.City,
+		&incident.VerificationStatus,
+		&incident.JusticeStatus,
+		&incident.CurrentVersion,
+		&incident.CreatedBy,
+		&incident.CreatedAt,
+		&incident.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("incident not found")
+		}
+		return nil, fmt.Errorf("failed to query incident: %w", err)
+	}
+
+	return &incident, nil
+}
+
+// CreateRevision updates the current version in master incidents and adds a new revision log.
+func (r *PostgresIncidentRepository) CreateRevision(ctx context.Context, rev models.IncidentRevision) (*models.IncidentRevision, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// Update Master record title, full_story, and bump version count
+	updateMasterQuery := `
+		UPDATE incidents
+		SET title = $1, full_story = $2, current_version = current_version + 1, updated_at = NOW()
+		WHERE id = $3
+		RETURNING current_version;
+	`
+
+	var newVersion int
+	err = tx.QueryRow(ctx, updateMasterQuery, rev.Title, rev.FullStory, rev.IncidentID).Scan(&newVersion)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update master incident: %w", err)
+	}
+
+	// Insert into incident_revisions table
+	insertRevQuery := `
+		INSERT INTO incident_revisions (incident_id, version_number, title, full_story, change_summary, edited_by)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id, created_at;
+	`
+
+	var createdRev models.IncidentRevision
+	createdRev = rev
+	createdRev.VersionNumber = newVersion
+
+	err = tx.QueryRow(ctx, insertRevQuery,
+		rev.IncidentID,
+		newVersion,
+		rev.Title,
+		rev.FullStory,
+		rev.ChangeSummary,
+		rev.EditedBy,
+	).Scan(&createdRev.ID, &createdRev.CreatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to insert revision: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return &createdRev, nil
+}
+
+// GetRevision fetches a specific historical version of an incident.
+func (r *PostgresIncidentRepository) GetRevision(ctx context.Context, incidentID uuid.UUID, version int) (*models.IncidentRevision, error) {
+	query := `
+		SELECT id, incident_id, version_number, title, full_story, change_summary, edited_by, created_at
+		FROM incident_revisions
+		WHERE incident_id = $1 AND version_number = $2;
+	`
+
+	var rev models.IncidentRevision
+	err := r.pool.QueryRow(ctx, query, incidentID, version).Scan(
+		&rev.ID,
+		&rev.IncidentID,
+		&rev.VersionNumber,
+		&rev.Title,
+		&rev.FullStory,
+		&rev.ChangeSummary,
+		&rev.EditedBy,
+		&rev.CreatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("revision version %d not found for incident", version)
+		}
+		return nil, fmt.Errorf("failed to query revision: %w", err)
+	}
+
+	return &rev, nil
+}
