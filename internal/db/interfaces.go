@@ -38,7 +38,7 @@ type CulpritRepository interface {
 
 // VerificationRepository handles crowd voting
 type VerificationRepository interface {
-	CastVote(ctx context.Context, incidentID uuid.UUID, userID uuid.UUID, vote string) error
+	CastVote(ctx context.Context, incidentID uuid.UUID, userID uuid.UUID, vote models.VoteType) error
 	GetVoteTally(ctx context.Context, incidentID uuid.UUID) (verifyCount int, rejectCount int, err error)
 }
 
