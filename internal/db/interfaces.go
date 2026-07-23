@@ -57,7 +57,7 @@ type MessagingRepository interface {
 	GetOrCreateConversation(ctx context.Context, currentUserID, targetUserID uuid.UUID) (*models.Conversation, error)
 	ListConversations(ctx context.Context, userID uuid.UUID) ([]*models.Conversation, error)
 	SendMessage(ctx context.Context, conversationID, senderID uuid.UUID, content string) (*models.Message, error)
-	GetMessages(ctx context.Context, conversationID uuid.UUID, limit, offset int) ([]*models.Message, error)
+	GetMessages(ctx context.Context, requestingUserID uuid.UUID, conversationID uuid.UUID, limit, offset int) ([]*models.Message, error)
 }
 
 // CommentRepository handles incident discussion threads

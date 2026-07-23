@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jungli-billa-raj/InjusticeDB/internal/models"
 )
 
 type PostgresVerificationRepository struct {
@@ -18,7 +19,7 @@ func NewPostgresVerificationRepository(pool *pgxpool.Pool) *PostgresVerification
 
 // CastVote records a user's verification or rejection vote.
 // If the user has already voted, ON CONFLICT updates their existing vote.
-func (r *PostgresVerificationRepository) CastVote(ctx context.Context, incidentID uuid.UUID, userID uuid.UUID, vote string) error {
+func (r *PostgresVerificationRepository) CastVote(ctx context.Context, incidentID uuid.UUID, userID uuid.UUID, vote models.VoteType) error {
 	query := `
 		INSERT INTO incident_verifications (incident_id, user_id, vote)
 		VALUES ($1, $2, $3::vote_type)
