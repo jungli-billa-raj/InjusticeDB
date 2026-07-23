@@ -198,3 +198,116 @@ func (r *PostgresIncidentRepository) GetRevision(ctx context.Context, incidentID
 
 	return &rev, nil
 }
+
+// List fetches incidents based on filter parameters (state, city, status, etc.)
+func (r *PostgresIncidentRepository) List(ctx context.Context, filter models.IncidentFilter) ([]*models.Incident, error) {
+	query := `
+		SELECT id, created_by, title, full_story, state, city,  
+		       verification_status, justice_status, created_at, updated_at
+		FROM incidents
+		WHERE ($1::text IS NULL OR state = $1)
+		  AND ($2::text IS NULL OR city = $2)
+		  AND ($3::text IS NULL OR verification_status = $3::verification_status)
+		ORDER BY created_at DESC
+		LIMIT $4 OFFSET $5;
+	`
+
+	limit := filter.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+
+	rows, err := r.pool.Query(ctx, query, filter.State, filter.City, filter.VerificationStatus, limit, filter.Offset)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list incidents: %w", err)
+	}
+	defer rows.Close()
+
+	var incidents []*models.Incident
+	for rows.Next() {
+		var inc models.Incident
+		err := rows.Scan(
+			&inc.ID,
+			&inc.CreatedBy,
+			&inc.Title,
+			&inc.FullStory,
+			&inc.State,
+			&inc.City,
+			&inc.VerificationStatus,
+			&inc.JusticeStatus,
+			&inc.CreatedAt,
+			&inc.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan incident row: %w", err)
+		}
+		incidents = append(incidents, &inc)
+	}
+
+	return incidents, nil
+}
+
+// ListRevisions retrieves the complete version history for a given incident ordered by version.
+func (r *PostgresIncidentRepository) ListRevisions(ctx context.Context, incidentID uuid.UUID) ([]*models.IncidentRevision, error) {
+	query := `
+		SELECT id, incident_id, version_number, title, full_story, change_summary, edited_by, created_at
+		FROM incident_revisions
+		WHERE incident_id = $1
+		ORDER BY version_number ASC;
+	`
+
+	rows, err := r.pool.Query(ctx, query, incidentID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list revisions: %w", err)
+	}
+	defer rows.Close()
+
+	var revisions []*models.IncidentRevision
+	for rows.Next() {
+		var rev models.IncidentRevision
+		err := rows.Scan(
+			&rev.ID,
+			&rev.IncidentID,
+			&rev.VersionNumber,
+			&rev.Title,
+			&rev.FullStory,
+			&rev.ChangeSummary,
+			&rev.EditedBy,
+			&rev.CreatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan revision row: %w", err)
+		}
+		revisions = append(revisions, &rev)
+	}
+
+	return revisions, nil
+}
+
+// UpdateVerificationStatus updates the community verification status of an incident.
+func (r *PostgresIncidentRepository) UpdateVerificationStatus(ctx context.Context, id uuid.UUID, status models.VerificationStatus) error {
+	query := `
+		UPDATE incidents
+		SET verification_status = $1, updated_at = NOW()
+		WHERE id = $2;
+	`
+	_, err := r.pool.Exec(ctx, query, status, id)
+	if err != nil {
+		return fmt.Errorf("failed to update verification status: %w", err)
+	}
+	return nil
+}
+
+// UpdateJusticeStatus updates the legal/justice outcome status of an incident.
+func (r *PostgresIncidentRepository) UpdateJusticeStatus(ctx context.Context, id uuid.UUID, status models.JusticeStatus) error {
+	query := `
+		UPDATE incidents
+		SET justice_status = $1, updated_at = NOW()
+		WHERE id = $2;
+	`
+	_, err := r.pool.Exec(ctx, query, status, id)
+	if err != nil {
+		return fmt.Errorf("failed to update justice status: %w", err)
+	}
+	return nil
+}
