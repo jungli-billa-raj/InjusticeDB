@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 
@@ -14,11 +15,11 @@ func TestUserLifecycleAndCredibility(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	// Reusing the setupTestDB pool initialization logic from incident_repo_pgx_test.go
-	dbURL := os.Getenv("DB_URL")
+	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
 		dbURL = "postgres://postgres:postgrespassword@localhost:5432/injusticedb?sslmode=disable"
 	}
+
 	ctx := context.Background()
 
 	pool, err := InitDB(ctx, dbURL)
@@ -30,7 +31,8 @@ func TestUserLifecycleAndCredibility(t *testing.T) {
 	repo := NewPostgresUserRepository(pool)
 
 	testID := uuid.New()
-	testEmail := "testuser@example.com"
+	// Dynamic email ensures no row collisions between test runs
+	testEmail := fmt.Sprintf("testuser_%s@example.com", testID.String())
 
 	// 1. Create or Update (Insert new user)
 	created, err := repo.CreateOrUpdate(ctx, models.CreateUserParams{

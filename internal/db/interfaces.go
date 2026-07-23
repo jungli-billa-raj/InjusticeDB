@@ -20,6 +20,7 @@ type IncidentRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*models.Incident, error)
 	List(ctx context.Context, filter models.IncidentFilter) ([]*models.Incident, error)
 	UpdateVerificationStatus(ctx context.Context, id uuid.UUID, status models.VerificationStatus) error
+	UpdateJusticeStatus(ctx context.Context, id uuid.UUID, status models.JusticeStatus) error
 
 	// Revision History (Version Control)
 	CreateRevision(ctx context.Context, revision models.IncidentRevision) (*models.IncidentRevision, error)
@@ -41,10 +42,13 @@ type VerificationRepository interface {
 	GetVoteTally(ctx context.Context, incidentID uuid.UUID) (verifyCount int, rejectCount int, err error)
 }
 
-// AssetRepository handles evidence media and web archives
+// AssetRepository handles evidence media, web archives, and soft deletion
 type AssetRepository interface {
 	AddAssets(ctx context.Context, assets []models.Asset) error
 	GetByIncidentID(ctx context.Context, incidentID uuid.UUID) ([]*models.Asset, error)
+	SoftDeleteAsset(ctx context.Context, assetID uuid.UUID) error
+	RestoreAsset(ctx context.Context, assetID uuid.UUID) error
+	HardDeleteExpiredAssets(ctx context.Context, daysOld int) ([]string, error)
 }
 
 // MessagingRepository handles 1-on-1 private DMs with RLS support
@@ -53,4 +57,16 @@ type MessagingRepository interface {
 	ListConversations(ctx context.Context, userID uuid.UUID) ([]*models.Conversation, error)
 	SendMessage(ctx context.Context, conversationID, senderID uuid.UUID, content string) (*models.Message, error)
 	GetMessages(ctx context.Context, conversationID uuid.UUID, limit, offset int) ([]*models.Message, error)
+}
+
+// CommentRepository handles incident discussion threads
+type CommentRepository interface {
+	CreateComment(ctx context.Context, incidentID, userID uuid.UUID, content string) (*models.Comment, error)
+	ListCommentsByIncident(ctx context.Context, incidentID uuid.UUID, limit, offset int) ([]*models.Comment, error)
+}
+
+// TargetRepository handles public registry tracking
+type TargetRepository interface {
+	CreateTarget(ctx context.Context, target models.YDCIDCTarget) (*models.YDCIDCTarget, error)
+	ListTargets(ctx context.Context, limit, offset int) ([]*models.YDCIDCTarget, error)
 }
