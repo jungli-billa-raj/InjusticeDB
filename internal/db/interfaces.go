@@ -46,6 +46,7 @@ type VerificationRepository interface {
 type AssetRepository interface {
 	AddAssets(ctx context.Context, assets []models.Asset) error
 	GetByIncidentID(ctx context.Context, incidentID uuid.UUID) ([]*models.Asset, error)
+	UpdateArchiveURL(ctx context.Context, assetID uuid.UUID, archiveURL string) error
 	SoftDeleteAsset(ctx context.Context, assetID uuid.UUID) error
 	RestoreAsset(ctx context.Context, assetID uuid.UUID) error
 	HardDeleteExpiredAssets(ctx context.Context, daysOld int) ([]string, error)

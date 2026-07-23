@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/jungli-billa-raj/InjusticeDB/internal/archival"
 	"github.com/jungli-billa-raj/InjusticeDB/internal/db"
 )
 
@@ -26,4 +27,13 @@ func main() {
 
 	log.Println("Connected to DB 👍")
 
+	// archiver initialization
+	assetRepo := db.NewPostgresAssetRepository(pool)
+	var archiver archival.Archiver
+	if os.Getenv("ENABLE_WAYBACK") == "true" {
+		archiver = archival.NewWaybackArchiver(assetRepo)
+	} else {
+		archiver = archival.NewNopArchiver()
+	}
+	_ = archiver
 }

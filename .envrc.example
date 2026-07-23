@@ -1,0 +1,5 @@
+export DB_URL="postgres://postgres:postgrespassword@localhost:5432/injusticedb?sslmode=disable"
+export NON_SU_DB_URL="postgres://app_user:app_password@localhost:5432/injusticedb?sslmode=disable"
+export ENABLE_WAYBACK="true"
+export DB_PORT=":5432"
+export PORT=":8080"

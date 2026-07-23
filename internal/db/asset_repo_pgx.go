@@ -154,3 +154,23 @@ func (r *PostgresAssetRepository) HardDeleteExpiredAssets(ctx context.Context, d
 
 	return deletedURLs, nil
 }
+
+// UpdateArchiveURL updates the archive_url for an asset once background archiving completes.
+func (r *PostgresAssetRepository) UpdateArchiveURL(ctx context.Context, assetID uuid.UUID, archiveURL string) error {
+	query := `
+		UPDATE assets
+		SET archive_url = $1
+		WHERE id = $2 AND deleted_at IS NULL;
+	`
+
+	res, err := r.pool.Exec(ctx, query, archiveURL, assetID)
+	if err != nil {
+		return fmt.Errorf("failed to update archive url: %w", err)
+	}
+
+	if res.RowsAffected() == 0 {
+		return fmt.Errorf("asset not found or deleted")
+	}
+
+	return nil
+}

@@ -46,6 +46,98 @@ A country is a big family. If you act like the nicest person in the room just to
 ---
 
 ## Contribution Guide
-TODO:
+**InjusticeDB** is built on the principle that transparency, immutability, and crowdsourced truth can empower real-world accountability. Every line of code, bug fix, and documentation improvement moves the platform forward.
+
+This document outlines the workflow, architecture guidelines, and specifically the nuances of our **Crowdsourced Verification System**.
+
+## 📐 Architecture & Principles
+
+InjusticeDB follows **Hexagonal Architecture** (Ports and Adapters) in Go:
+
+1. **Interfaces First:** All database capabilities are defined in `internal/db/interfaces.go`. Endpoints write to interfaces, not concrete PostgreSQL structs.
+2. **Database Integrity:** PostgreSQL is our single source of truth. Schema changes require explicit up/down migration files in `migrations/`. I'm using [golang-migrate](https://github.com/golang-migrate/migrate).
+3. **Immutability & Soft Deletes:** Historical reports and evidence assets are never hard-deleted immediately. Evidence assets utilize a 30-day soft-deletion grace period prior to permanent cleanup.
+4. **Wayback Machine Backup:** Every article linked as assets in an `incident` will eventually be locked in through the Wayback Machine. I'm still in process of figuring out the cost and if this is even needed right now.
+
+---
+
+## ⚖️ Understanding the Verification System
+### 1. Dual-Status Architecture
+
+The post is owned by no one, not even the dude who posted it. Every incident tracks two distinct state variables:
+
+* **`VerificationStatus`** (`pending` $\rightarrow$ `verified` / `rejected`): Driven purely by crowdsourced community voting and weighted credibility. Every new account starts with credibility score of 100. They increase and decrease when they changes they made are added or removed by the community. 
+* **`JusticeStatus`** (`proceeding` $\rightarrow$ `served` / `stalled`): Driven by real-world legal outcomes and official documentation updates.
+
+### 2. Weighted Crowd Voting (`VerificationRepository`)
+
+When a user casts a vote via `CastVote(ctx, incidentID, userID, vote)`:
+
+* **Vote Types:** Must be typed using `models.VoteType` (`models.VoteVerify` or `models.VoteReject`). 
+* **Idempotency & Updates:** If a user votes `verify` and later changes their mind to `reject`, the database updates their existing vote rather than incrementing a duplicate row.
+* **Credibility Weighting:** A user's vote carries weight proportional to their `credibility_score` (managed via `UserRepository.UpdateCredibility`). Users with higher verified platform contributions have stronger weight in moving an incident from `pending` to `verified`.
+
+### 3. Git-Style Revision Control vs. Voting
+
+Voting does **not** modify the underlying incident text. If new evidence emerges:
+
+1. A new `IncidentRevision` is created with an incremented version number (`v1` $\rightarrow$ `v2`).
+2. Major revisions trigger a re-evaluation of the verification tally to ensure the new facts are re-vetted by the community.
+
+So, every `incident` will have a version number. If the user feel like some `incident` is lying or pushing an agenda, they can check out previous versions or make changes to create a new version. 
+
+---
+
+## 🛠️ Local Development & Testing Workflow
+
+### 1. Prerequisites
+
+* **Go 1.26.5+**
+* **Docker & Docker Compose** (for local PostgreSQL)
+* **golang-migrate** CLI
+
+### 2. Setting Up the Database
+
+Start local PostgreSQL and run migrations:
+
+```bash
+# Start Postgres container
+docker-compose up -d
+
+# Run migrations up
+migrate -path=./migrations -database="postgres://postgres:postgrespassword@localhost:5432/injusticedb?sslmode=disable" up
+
+```
+
+### 3. Running Test Suites
+
+Before submitting a Pull Request, all unit and integration tests **must** pass cleanly:
+
+```bash
+go test -v ./internal/db
+
+```
+
+*Note: Integration tests target local PostgreSQL. Ensure your local database container is running.*
+
+---
+
+## 📬 Submitting a Pull Request (PR)
+
+1. **Fork the Repository** and create your branch from `main`:
+```bash
+git checkout -b feature/my-cool-feature
+
+```
 
 
+2. **Keep Commit Messages Clear:** Use descriptive prefixes (`feat:`, `fix:`, `docs:`, `refactor:`).
+3. **Include Tests:** Any new repository method or handler must include corresponding test cases in `*_test.go`.
+4. **Open a PR:** Describe *what* changes were made and *why*. Link any relevant issues.
+
+---
+
+## ❤️ Welcome aboard!
+
+Thank you for your time. 
+Welcome to the **InjusticeDB** community. Let's build this. 
