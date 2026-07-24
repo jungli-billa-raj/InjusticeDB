@@ -111,6 +111,8 @@ CREATE TABLE conversations (
     user_one_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     user_two_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT check_different_users CHECK (user_one_id <> user_two_id),
+    CONSTRAINT check_canonical_order CHECK (user_one_id < user_two_id),
     UNIQUE(user_one_id, user_two_id)
 );
 
@@ -127,7 +129,7 @@ CREATE TABLE messages (
 -- ============================================================================
 -- INDEXES
 -- ============================================================================
-CREATE INDEX idx_incidents_location ON incidents(state, city);
+CREATE INDEX idx_revisions_location ON incident_revisions(state, city);
 CREATE INDEX idx_incidents_verification ON incidents(verification_status);
 CREATE INDEX idx_revisions_incident ON incident_revisions(incident_id, version_number);
 CREATE INDEX idx_assets_incident_id ON assets(incident_id);

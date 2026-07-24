@@ -17,10 +17,10 @@ type UserRepository interface {
 // IncidentRepository handles master records and git-style revision history
 type IncidentRepository interface {
 	Create(ctx context.Context, params models.CreateIncidentParams) (*models.Incident, error)
-	GetByID(ctx context.Context, id uuid.UUID) (*models.Incident, error)
-	List(ctx context.Context, filter models.IncidentFilter) ([]*models.Incident, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*models.FullLatestIncident, error)
+	// List(ctx context.Context, filter models.IncidentFilter) ([]*models.Incident, error)
 	UpdateVerificationStatus(ctx context.Context, id uuid.UUID, status models.VerificationStatus) error
-	UpdateJusticeStatus(ctx context.Context, id uuid.UUID, status models.JusticeStatus) error
+	// UpdateJusticeStatus(ctx context.Context, id uuid.UUID, status models.JusticeStatus) error
 
 	// Revision History (Version Control)
 	CreateRevision(ctx context.Context, revision models.IncidentRevision) (*models.IncidentRevision, error)

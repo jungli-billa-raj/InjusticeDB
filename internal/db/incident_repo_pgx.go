@@ -214,53 +214,66 @@ func (r *PostgresIncidentRepository) GetRevision(ctx context.Context, incidentID
 	return &rev, nil
 }
 
-// List fetches incidents based on filter parameters (state, city, status, etc.)
-func (r *PostgresIncidentRepository) List(ctx context.Context, filter models.IncidentFilter) ([]*models.Incident, error) {
-	query := `
-		SELECT id, created_by, title, full_story, state, city,  
-		       verification_status, justice_status, created_at, updated_at
-		FROM incidents
-		WHERE ($1::text IS NULL OR state = $1)
-		  AND ($2::text IS NULL OR city = $2)
-		  AND ($3::text IS NULL OR verification_status = $3::verification_status)
-		ORDER BY created_at DESC
-		LIMIT $4 OFFSET $5;
-	`
+// // List fetches incidents based on filter parameters (state, city, status, etc.)
+// func (r *PostgresIncidentRepository) List(ctx context.Context, filter models.IncidentFilter) ([]*models.Incident, error) {
+// 	query := `
+// 		SELECT
+// 			i.id,
+// 			r.title,
+// 			r.full_story,
+// 			r.severity,
+// 			r.justice_status,
+// 			r.state,
+// 			r.city,
+// 			i.verification_status,
+// 			i.current_version,
+// 			i.created_by,
+// 			i.created_at,
+// 			i.updated_at
+// 		FROM incidents i
+// 		JOIN incident_revisions r
+// 		  ON i.id = r.incident_id AND i.current_version = r.version_number
+// 		WHERE ($1::text IS NULL OR r.state = $1)
+// 		  AND ($2::text IS NULL OR r.city = $2)
+// 		  AND ($3::text IS NULL OR i.verification_status = $3::verification_status_type)
+// 		ORDER BY i.created_at DESC
+// 		LIMIT $4 OFFSET $5;
+// 	`
 
-	limit := filter.Limit
-	if limit <= 0 {
-		limit = 20
-	}
+// 	limit := filter.Limit
+// 	if limit <= 0 {
+// 		limit = 20
+// 	}
 
-	rows, err := r.pool.Query(ctx, query, filter.State, filter.City, filter.VerificationStatus, limit, filter.Offset)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list incidents: %w", err)
-	}
-	defer rows.Close()
+// 	rows, err := r.pool.Query(ctx, query, filter.State, filter.City, filter.VerificationStatus, limit, filter.Offset)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to list incidents: %w", err)
+// 	}
+// 	defer rows.Close()
 
-	var incidents []*models.Incident
-	for rows.Next() {
-		var inc models.Incident
-		err := rows.Scan(
-			&inc.ID,
-			&inc.CreatedBy,
-			&inc.Title,
-			&inc.FullStory,
-			&inc.State,
-			&inc.City,
-			&inc.VerificationStatus,
-			&inc.JusticeStatus,
-			&inc.CreatedAt,
-			&inc.UpdatedAt,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan incident row: %w", err)
-		}
-		incidents = append(incidents, &inc)
-	}
+// 	var incidents []*models.Incident
+// 	for rows.Next() {
+// 		var inc models.Incident
+// 		err := rows.Scan(
+// 			&inc.ID,
+// 			&inc.CreatedBy,
+// 			&inc.Title,
+// 			&inc.FullStory,
+// 			&inc.State,
+// 			&inc.City,
+// 			&inc.VerificationStatus,
+// 			&inc.JusticeStatus,
+// 			&inc.CreatedAt,
+// 			&inc.UpdatedAt,
+// 		)
+// 		if err != nil {
+// 			return nil, fmt.Errorf("failed to scan incident row: %w", err)
+// 		}
+// 		incidents = append(incidents, &inc)
+// 	}
 
-	return incidents, nil
-}
+// 	return incidents, nil
+// }
 
 // ListRevisions retrieves the complete version history for a given incident ordered by version.
 func (r *PostgresIncidentRepository) ListRevisions(ctx context.Context, incidentID uuid.UUID) ([]*models.IncidentRevision, error) {
@@ -313,16 +326,16 @@ func (r *PostgresIncidentRepository) UpdateVerificationStatus(ctx context.Contex
 	return nil
 }
 
-// UpdateJusticeStatus updates the legal/justice outcome status of an incident.
-func (r *PostgresIncidentRepository) UpdateJusticeStatus(ctx context.Context, id uuid.UUID, status models.JusticeStatus) error {
-	query := `
-		UPDATE incidents
-		SET justice_status = $1, updated_at = NOW()
-		WHERE id = $2;
-	`
-	_, err := r.pool.Exec(ctx, query, status, id)
-	if err != nil {
-		return fmt.Errorf("failed to update justice status: %w", err)
-	}
-	return nil
-}
+// // UpdateJusticeStatus updates the legal/justice outcome status of an incident.
+// func (r *PostgresIncidentRepository) UpdateJusticeStatus(ctx context.Context, id uuid.UUID, status models.JusticeStatus) error {
+// 	query := `
+// 		UPDATE incidents
+// 		SET justice_status = $1, updated_at = NOW()
+// 		WHERE id = $2;
+// 	`
+// 	_, err := r.pool.Exec(ctx, query, status, id)
+// 	if err != nil {
+// 		return fmt.Errorf("failed to update justice status: %w", err)
+// 	}
+// 	return nil
+// }
