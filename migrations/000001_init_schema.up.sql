@@ -34,13 +34,7 @@ CREATE TABLE people (
 -- 3. INCIDENTS TABLE
 CREATE TABLE incidents (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    title VARCHAR(255) NOT NULL,
-    full_story TEXT NOT NULL,
-    severity INTEGER NOT NULL CHECK (severity >= 1 AND severity <= 10),
-    state VARCHAR(100) NOT NULL,
-    city VARCHAR(100) NOT NULL,
     verification_status verification_status_type NOT NULL DEFAULT 'pending',
-    justice_status justice_status_type NOT NULL DEFAULT 'proceeding',
     current_version INTEGER NOT NULL DEFAULT 1,
     created_by UUID REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -51,9 +45,13 @@ CREATE TABLE incidents (
 CREATE TABLE incident_revisions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     incident_id UUID NOT NULL REFERENCES incidents(id) ON DELETE CASCADE,
-    version_number INTEGER NOT NULL,
     title VARCHAR(255) NOT NULL,
     full_story TEXT NOT NULL,
+    severity INTEGER NOT NULL CHECK (severity >= 1 AND severity <= 10),
+    justice_status justice_status_type NOT NULL DEFAULT 'proceeding',
+    state VARCHAR(100) NOT NULL,
+    city VARCHAR(100) NOT NULL,
+    version_number INTEGER NOT NULL,
     change_summary TEXT NOT NULL,
     edited_by UUID REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,

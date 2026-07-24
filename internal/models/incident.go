@@ -21,14 +21,13 @@ const (
 )
 
 type Incident struct {
-	ID                 uuid.UUID          `json:"id"`
-	Title              string             `json:"title"`
-	FullStory          string             `json:"full_story"`
-	Severity           int                `json:"severity"`
-	State              string             `json:"state"`
-	City               string             `json:"city"`
+	ID uuid.UUID `json:"id"`
+	// Title              string             `json:"title"`
+	// FullStory          string             `json:"full_story"`
+	// Severity           int                `json:"severity"`
+	// State              string             `json:"state"`
+	// City               string             `json:"city"`
 	VerificationStatus VerificationStatus `json:"verification_status"`
-	JusticeStatus      JusticeStatus      `json:"justice_status"`
 	CurrentVersion     int                `json:"current_version"`
 	CreatedBy          *uuid.UUID         `json:"created_by,omitempty"`
 	CreatedAt          time.Time          `json:"created_at"`
@@ -36,12 +35,13 @@ type Incident struct {
 }
 
 type CreateIncidentParams struct {
-	Title     string     `json:"title"`
-	FullStory string     `json:"full_story"`
-	Severity  int        `json:"severity"`
-	State     string     `json:"state"`
-	City      string     `json:"city"`
-	CreatedBy *uuid.UUID `json:"created_by,omitempty"`
+	Title         string        `json:"title"`
+	FullStory     string        `json:"full_story"`
+	JusticeStatus JusticeStatus `json:"justice_status"`
+	Severity      int           `json:"severity"`
+	State         string        `json:"state"`
+	City          string        `json:"city"`
+	CreatedBy     *uuid.UUID    `json:"created_by,omitempty"`
 }
 
 type IncidentFilter struct {
@@ -53,12 +53,31 @@ type IncidentFilter struct {
 }
 
 type IncidentRevision struct {
-	ID            uuid.UUID  `json:"id"`
-	IncidentID    uuid.UUID  `json:"incident_id"`
-	VersionNumber int        `json:"version_number"`
-	Title         string     `json:"title"`
-	FullStory     string     `json:"full_story"`
-	ChangeSummary string     `json:"change_summary"`
-	EditedBy      *uuid.UUID `json:"edited_by,omitempty"`
-	CreatedAt     time.Time  `json:"created_at"`
+	ID            uuid.UUID     `json:"id"`
+	IncidentID    uuid.UUID     `json:"incident_id"`
+	Title         string        `json:"title"`
+	FullStory     string        `json:"full_story"`
+	Severity      int           `json:"severity"`
+	JusticeStatus JusticeStatus `json:"justice_status"`
+	State         string        `json:"state"`
+	City          string        `json:"city"`
+	VersionNumber int           `json:"version_number"`
+	ChangeSummary string        `json:"change_summary"`
+	EditedBy      *uuid.UUID    `json:"edited_by,omitempty"`
+	CreatedAt     time.Time     `json:"created_at"`
+}
+
+type FullLatestIncident struct {
+	IncidentID         uuid.UUID          `json:"incident_id"`
+	VerificationStatus VerificationStatus `json:"verification_status"`
+	Title              string             `json:"title"`
+	FullStory          string             `json:"full_story"`
+	Severity           int                `json:"severity"`
+	JusticeStatus      JusticeStatus      `json:"justice_status"`
+	State              string             `json:"state"`
+	City               string             `json:"city"`
+	VersionNumber      int                `json:"version_number"`
+	CreatedBy          *uuid.UUID         `json:"created_by,omitempty"`
+	CreatedAt          time.Time          `json:"created_at"`
+	UpdatedAt          time.Time          `json:"updated_at"`
 }

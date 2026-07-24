@@ -30,28 +30,17 @@ func (r *PostgresIncidentRepository) Create(ctx context.Context, params models.C
 
 	// 1. Insert Master Incident
 	query := `
-		INSERT INTO incidents (title, full_story, severity, state, city, created_by)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id, title, full_story, severity, state, city, verification_status, justice_status, current_version, created_by, created_at, updated_at;
+		INSERT INTO incidents (created_by)
+		VALUES ($1)
+		RETURNING id, verification_status, current_version, created_by, created_at, updated_at;
 	`
 
 	var incident models.Incident
 	err = tx.QueryRow(ctx, query,
-		params.Title,
-		params.FullStory,
-		params.Severity,
-		params.State,
-		params.City,
 		params.CreatedBy,
 	).Scan(
 		&incident.ID,
-		&incident.Title,
-		&incident.FullStory,
-		&incident.Severity,
-		&incident.State,
-		&incident.City,
 		&incident.VerificationStatus,
-		&incident.JusticeStatus,
 		&incident.CurrentVersion,
 		&incident.CreatedBy,
 		&incident.CreatedAt,
@@ -63,14 +52,18 @@ func (r *PostgresIncidentRepository) Create(ctx context.Context, params models.C
 
 	// 2. Insert Version 1 into incident_revisions
 	revQuery := `
-		INSERT INTO incident_revisions (incident_id, version_number, title, full_story, change_summary, edited_by)
-		VALUES ($1, $2, $3, $4, $5, $6);
+		INSERT INTO incident_revisions (incident_id, title, full_story, severity, justice_status, state, city, version_number, change_summary, edited_by)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
 	`
 	_, err = tx.Exec(ctx, revQuery,
 		incident.ID,
+		params.Title,
+		params.FullStory,
+		params.Severity,
+		params.JusticeStatus,
+		params.State,
+		params.City,
 		1,
-		incident.Title,
-		incident.FullStory,
 		"Initial creation of the record",
 		params.CreatedBy,
 	)
@@ -85,25 +78,39 @@ func (r *PostgresIncidentRepository) Create(ctx context.Context, params models.C
 	return &incident, nil
 }
 
-// GetByID fetches a single master incident record.
-func (r *PostgresIncidentRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Incident, error) {
+// GetByID fetches a single master incident record along with its latest revision text.
+func (r *PostgresIncidentRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.FullLatestIncident, error) {
 	query := `
-		SELECT id, title, full_story, severity, state, city, verification_status, justice_status, current_version, created_by, created_at, updated_at
-		FROM incidents
-		WHERE id = $1;
+		SELECT 
+			i.id, 
+			r.title, 
+			r.full_story, 
+			r.state, 
+			r.city, 
+			i.verification_status, 
+			r.severity,
+			r.justice_status, 
+			i.current_version, 
+			i.created_by, 
+			i.created_at, 
+			i.updated_at
+		FROM incidents i
+		JOIN incident_revisions r 
+		  ON i.id = r.incident_id AND i.current_version = r.version_number
+		WHERE i.id = $1;
 	`
 
-	var incident models.Incident
+	var incident models.FullLatestIncident
 	err := r.pool.QueryRow(ctx, query, id).Scan(
-		&incident.ID,
+		&incident.IncidentID,
 		&incident.Title,
 		&incident.FullStory,
-		&incident.Severity,
 		&incident.State,
 		&incident.City,
 		&incident.VerificationStatus,
+		&incident.Severity,
 		&incident.JusticeStatus,
-		&incident.CurrentVersion,
+		&incident.VersionNumber,
 		&incident.CreatedBy,
 		&incident.CreatedAt,
 		&incident.UpdatedAt,
@@ -129,21 +136,21 @@ func (r *PostgresIncidentRepository) CreateRevision(ctx context.Context, rev mod
 	// Update Master record title, full_story, and bump version count
 	updateMasterQuery := `
 		UPDATE incidents
-		SET title = $1, full_story = $2, current_version = current_version + 1, updated_at = NOW()
-		WHERE id = $3
+		SET current_version = current_version + 1, updated_at = NOW()
+		WHERE id = $1
 		RETURNING current_version;
 	`
 
 	var newVersion int
-	err = tx.QueryRow(ctx, updateMasterQuery, rev.Title, rev.FullStory, rev.IncidentID).Scan(&newVersion)
+	err = tx.QueryRow(ctx, updateMasterQuery, rev.IncidentID).Scan(&newVersion)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update master incident: %w", err)
 	}
 
 	// Insert into incident_revisions table
 	insertRevQuery := `
-		INSERT INTO incident_revisions (incident_id, version_number, title, full_story, change_summary, edited_by)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO incident_revisions (incident_id, title, full_story, severity, justice_status, state, city, version_number,  change_summary, edited_by)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING id, created_at;
 	`
 
@@ -153,9 +160,13 @@ func (r *PostgresIncidentRepository) CreateRevision(ctx context.Context, rev mod
 
 	err = tx.QueryRow(ctx, insertRevQuery,
 		rev.IncidentID,
-		newVersion,
 		rev.Title,
 		rev.FullStory,
+		rev.Severity,
+		rev.JusticeStatus,
+		rev.State,
+		rev.City,
+		newVersion,
 		rev.ChangeSummary,
 		rev.EditedBy,
 	).Scan(&createdRev.ID, &createdRev.CreatedAt)
@@ -173,7 +184,7 @@ func (r *PostgresIncidentRepository) CreateRevision(ctx context.Context, rev mod
 // GetRevision fetches a specific historical version of an incident.
 func (r *PostgresIncidentRepository) GetRevision(ctx context.Context, incidentID uuid.UUID, version int) (*models.IncidentRevision, error) {
 	query := `
-		SELECT id, incident_id, version_number, title, full_story, change_summary, edited_by, created_at
+		SELECT id, incident_id, title, full_story, severity, justice_status, state, city, version_number, change_summary, edited_by, created_at
 		FROM incident_revisions
 		WHERE incident_id = $1 AND version_number = $2;
 	`
@@ -182,9 +193,13 @@ func (r *PostgresIncidentRepository) GetRevision(ctx context.Context, incidentID
 	err := r.pool.QueryRow(ctx, query, incidentID, version).Scan(
 		&rev.ID,
 		&rev.IncidentID,
-		&rev.VersionNumber,
 		&rev.Title,
 		&rev.FullStory,
+		&rev.Severity,
+		&rev.JusticeStatus,
+		&rev.State,
+		&rev.City,
+		&rev.VersionNumber,
 		&rev.ChangeSummary,
 		&rev.EditedBy,
 		&rev.CreatedAt,
