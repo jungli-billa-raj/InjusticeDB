@@ -18,7 +18,7 @@ import (
 func setupUserTestDB(t *testing.T) (*pgxpool.Pool, func()) {
 	t.Helper()
 
-	dbURL := os.Getenv("DATABASE_URL")
+	dbURL := os.Getenv("DB_URL")
 	if dbURL == "" {
 		dbURL = "postgres://postgres:postgrespassword@localhost:5432/injusticedb?sslmode=disable"
 	}

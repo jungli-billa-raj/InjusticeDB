@@ -82,8 +82,8 @@ CREATE TABLE assets (
     type asset_type NOT NULL,
     url TEXT NOT NULL,
     archive_url TEXT,
-    uploaded_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-    deleted_at TIMESTAMPTZ
+    uploaded_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMPTZ DEFAULT NULL
 );
 
 -- 8. COMMENTS TABLE

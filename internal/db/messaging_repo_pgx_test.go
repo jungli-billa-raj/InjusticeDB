@@ -18,9 +18,9 @@ import (
 func setupMessagingTestDB(t *testing.T) (*pgxpool.Pool, func()) {
 	t.Helper()
 
-	dbURL := os.Getenv("DATABASE_URL")
+	dbURL := os.Getenv("NON_SU_DB_UR")
 	if dbURL == "" {
-		dbURL = "postgres://postgres:postgrespassword@localhost:5432/injusticedb?sslmode=disable"
+		dbURL = "postgres://app_user:app_password@localhost:5432/injusticedb?sslmode=disable"
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

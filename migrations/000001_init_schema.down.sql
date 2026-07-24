@@ -2,6 +2,16 @@
 DROP POLICY IF EXISTS message_participant_policy ON messages;
 DROP POLICY IF EXISTS conversation_participant_policy ON conversations;
 
+-- Drop Indexes
+DROP INDEX IF EXISTS idx_incidents_verification; 
+DROP INDEX IF EXISTS idx_revisions_incident ;
+DROP INDEX IF EXISTS idx_assets_incident_id ;
+DROP INDEX IF EXISTS idx_comments_incident_id; 
+DROP INDEX IF EXISTS idx_incident_culprits_person_id ;
+DROP INDEX IF EXISTS idx_conversations_users ;
+DROP INDEX IF EXISTS idx_messages_conversation;
+DROP INDEX IF EXISTS idx_assets_incident_active;
+
 -- Drop Triggers and Functions
 DROP TRIGGER IF EXISTS update_incidents_updated_at ON incidents;
 DROP FUNCTION IF EXISTS update_updated_at_column();

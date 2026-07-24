@@ -133,7 +133,7 @@ func (r *PostgresAssetRepository) HardDeleteExpiredAssets(ctx context.Context, d
 	query := `
 		DELETE FROM assets
 		WHERE deleted_at IS NOT NULL 
-          AND deleted_at < (CURRENT_TIMESTAMP - ($1 || ' days')::INTERVAL)
+          AND deleted_at < (CURRENT_TIMESTAMP - make_interval(days => $1))
 		RETURNING url;
 	`
 
