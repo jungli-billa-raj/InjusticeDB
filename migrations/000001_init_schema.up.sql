@@ -129,9 +129,8 @@ CREATE TABLE messages (
 -- ============================================================================
 -- INDEXES
 -- ============================================================================
-CREATE INDEX idx_revisions_location ON incident_revisions(state, city);
 CREATE INDEX idx_incidents_verification ON incidents(verification_status);
-CREATE INDEX idx_revisions_incident ON incident_revisions(incident_id, version_number);
+CREATE INDEX idx_revisions_incident ON incident_revisions(incident_id, version_number DESC);
 CREATE INDEX idx_assets_incident_id ON assets(incident_id);
 CREATE INDEX idx_comments_incident_id ON comments(incident_id);
 CREATE INDEX idx_incident_culprits_person_id ON incident_culprits(person_id);
