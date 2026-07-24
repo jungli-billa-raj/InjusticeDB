@@ -14,3 +14,4 @@ comment_repo_pgx.go                     [DONE]
 4. Rewriting tests
 user_repo_pgx_test.go                   [DONE]
 incident_repo_pgx_test.go               [DONE]
+asset_repo_pgx_test.go                  [DONE]
