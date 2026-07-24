@@ -2,106 +2,118 @@ package db
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
+	"time"
 
-	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/jungli-billa-raj/InjusticeDB/internal/models"
 )
 
-func TestVerificationVotingAndTallies(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
+// setupVerificationTestDB prepares a pool and truncates related tables for isolation.
+func setupVerificationTestDB(t *testing.T) (*pgxpool.Pool, func()) {
+	t.Helper()
 
-	dbURL := os.Getenv("DB_URL")
+	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
 		dbURL = "postgres://postgres:postgrespassword@localhost:5432/injusticedb?sslmode=disable"
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	pool, err := pgxpool.New(ctx, dbURL)
+	require.NoError(t, err, "failed to connect to test database")
+
+	_, err = pool.Exec(ctx, "TRUNCATE TABLE users, incidents, incident_verifications CASCADE;")
+	require.NoError(t, err, "failed to truncate tables")
+
+	teardown := func() {
+		pool.Close()
+	}
+
+	return pool, teardown
+}
+
+func TestPostgresVerificationRepository_CastVoteAndGetTally(t *testing.T) {
+	pool, teardown := setupVerificationTestDB(t)
+	defer teardown()
+
+	userRepo := NewPostgresUserRepository(pool)
+	incidentRepo := NewPostgresIncidentRepository(pool)
+	verificationRepo := NewPostgresVerificationRepository(pool)
 	ctx := context.Background()
 
-	pool, err := InitDB(ctx, dbURL)
-	if err != nil {
-		t.Fatalf("Failed to connect to test database: %v", err)
-	}
-	defer pool.Close()
-
-	verificationRepo := NewPostgresVerificationRepository(pool)
-	incidentRepo := NewPostgresIncidentRepository(pool)
-	userRepo := NewPostgresUserRepository(pool)
-
-	// 1. Create a Test Incident
-	incident, err := incidentRepo.Create(ctx, models.CreateIncidentParams{
-		Title:     "Verification Test Incident",
-		FullStory: "Testing voting system and tallies",
-		Severity:  5,
-		State:     "Jharkhand",
-		City:      "Ranchi",
+	// Seed Users
+	u1, err := userRepo.CreateOrUpdate(ctx, models.CreateUserParams{
+		Email:        "voter1@example.com",
+		Name:         "Voter One",
+		AuthProvider: "google",
 	})
-	if err != nil {
-		t.Fatalf("Failed to create incident: %v", err)
-	}
+	require.NoError(t, err)
 
-	// 2. Create 3 Test Users
-	u1ID, u2ID, u3ID := uuid.New(), uuid.New(), uuid.New()
+	u2, err := userRepo.CreateOrUpdate(ctx, models.CreateUserParams{
+		Email:        "voter2@example.com",
+		Name:         "Voter Two",
+		AuthProvider: "google",
+	})
+	require.NoError(t, err)
 
-	users := []models.CreateUserParams{
-		{ID: u1ID, Email: fmt.Sprintf("voter1_%s@example.com", u1ID), Name: "Voter One", AuthProvider: "google"},
-		{ID: u2ID, Email: fmt.Sprintf("voter2_%s@example.com", u2ID), Name: "Voter Two", AuthProvider: "google"},
-		{ID: u3ID, Email: fmt.Sprintf("voter3_%s@example.com", u3ID), Name: "Voter Three", AuthProvider: "google"},
-	}
+	u3, err := userRepo.CreateOrUpdate(ctx, models.CreateUserParams{
+		Email:        "voter3@example.com",
+		Name:         "Voter Three",
+		AuthProvider: "google",
+	})
+	require.NoError(t, err)
 
-	for _, u := range users {
-		_, err := userRepo.CreateOrUpdate(ctx, u)
-		if err != nil {
-			t.Fatalf("Failed to create test user: %v", err)
-		}
-	}
+	// Seed Incident
+	inc, err := incidentRepo.Create(ctx, models.CreateIncidentParams{
+		Title:         "Verification Vote Test Incident",
+		FullStory:     "Testing community verification vote tallying.",
+		Severity:      6,
+		JusticeStatus: models.JusticeProceeding,
+		State:         "Jharkhand",
+		City:          "Ranchi",
+	})
+	require.NoError(t, err)
 
-	// 3. Cast Votes (2 Verifies, 1 Reject)
-	err = verificationRepo.CastVote(ctx, incident.ID, u1ID, "verify")
-	if err != nil {
-		t.Fatalf("Failed user 1 vote: %v", err)
-	}
+	t.Run("GetVoteTally returns 0, 0 for new incident with no votes", func(t *testing.T) {
+		verifyCount, rejectCount, err := verificationRepo.GetVoteTally(ctx, inc.ID)
+		require.NoError(t, err)
+		assert.Equal(t, 0, verifyCount)
+		assert.Equal(t, 0, rejectCount)
+	})
 
-	err = verificationRepo.CastVote(ctx, incident.ID, u2ID, "verify")
-	if err != nil {
-		t.Fatalf("Failed user 2 vote: %v", err)
-	}
+	t.Run("CastVote records multiple votes and calculates correct tally", func(t *testing.T) {
+		// User 1 votes 'verify'
+		err := verificationRepo.CastVote(ctx, inc.ID, u1.ID, models.VoteVerify)
+		require.NoError(t, err)
 
-	err = verificationRepo.CastVote(ctx, incident.ID, u3ID, "reject")
-	if err != nil {
-		t.Fatalf("Failed user 3 vote: %v", err)
-	}
+		// User 2 votes 'verify'
+		err = verificationRepo.CastVote(ctx, inc.ID, u2.ID, models.VoteVerify)
+		require.NoError(t, err)
 
-	// 4. Verify Tally Count
-	vCount, rCount, err := verificationRepo.GetVoteTally(ctx, incident.ID)
-	if err != nil {
-		t.Fatalf("Failed to get vote tally: %v", err)
-	}
+		// User 3 votes 'reject'
+		err = verificationRepo.CastVote(ctx, inc.ID, u3.ID, models.VoteReject)
+		require.NoError(t, err)
 
-	if vCount != 2 {
-		t.Errorf("Expected 2 verify votes, got %d", vCount)
-	}
+		verifyCount, rejectCount, err := verificationRepo.GetVoteTally(ctx, inc.ID)
+		require.NoError(t, err)
+		assert.Equal(t, 2, verifyCount)
+		assert.Equal(t, 1, rejectCount)
+	})
 
-	if rCount != 1 {
-		t.Errorf("Expected 1 reject vote, got %d", rCount)
-	}
+	t.Run("CastVote updates vote on conflict when user changes vote", func(t *testing.T) {
+		// User 1 changes vote from 'verify' to 'reject'
+		err := verificationRepo.CastVote(ctx, inc.ID, u1.ID, models.VoteReject)
+		require.NoError(t, err)
 
-	// 5. User 3 changes their mind (updates vote from 'reject' to 'verify')
-	err = verificationRepo.CastVote(ctx, incident.ID, u3ID, "verify")
-	if err != nil {
-		t.Fatalf("Failed user 3 vote update: %v", err)
-	}
-
-	vCountUpdated, rCountUpdated, err := verificationRepo.GetVoteTally(ctx, incident.ID)
-	if err != nil {
-		t.Fatalf("Failed to get updated vote tally: %v", err)
-	}
-
-	if vCountUpdated != 3 || rCountUpdated != 0 {
-		t.Errorf("Expected 3 verifies and 0 rejects after update, got %d verify, %d reject", vCountUpdated, rCountUpdated)
-	}
+		verifyCount, rejectCount, err := verificationRepo.GetVoteTally(ctx, inc.ID)
+		require.NoError(t, err)
+		assert.Equal(t, 1, verifyCount, "Verify count should drop to 1")
+		assert.Equal(t, 2, rejectCount, "Reject count should increase to 2")
+	})
 }
