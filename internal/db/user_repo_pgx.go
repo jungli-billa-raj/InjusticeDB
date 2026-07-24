@@ -22,8 +22,8 @@ func NewPostgresUserRepository(pool *pgxpool.Pool) *PostgresUserRepository {
 // CreateOrUpdate creates a user if they don't exist, or updates their profile details on re-login (Upsert).
 func (r *PostgresUserRepository) CreateOrUpdate(ctx context.Context, params models.CreateUserParams) (*models.User, error) {
 	query := `
-		INSERT INTO users (id, email, name, auth_provider)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO users (email, name, auth_provider)
+		VALUES ($1, $2, $3)
 		ON CONFLICT (email) DO UPDATE 
 		SET name = EXCLUDED.name, auth_provider = EXCLUDED.auth_provider
 		RETURNING id, email, name, auth_provider, role, credibility_score, created_at;
@@ -31,7 +31,6 @@ func (r *PostgresUserRepository) CreateOrUpdate(ctx context.Context, params mode
 
 	var user models.User
 	err := r.pool.QueryRow(ctx, query,
-		params.ID,
 		params.Email,
 		params.Name,
 		params.AuthProvider,

@@ -3,7 +3,7 @@
     until I see how S3 works.  [PENDING]
 3. reviewing DB call functions or interface contract functions 
 incident_repo_pgx.go                    [DONE]
-user_repo_pgx.go                        [PENDING]
+user_repo_pgx.go                        [DONE]
 asset_repo_pgx.go                       [PENDING]
 verification_repo_pgx.go                [PENDING]
 culprit_repo_pgx.go                     [PENDING]
