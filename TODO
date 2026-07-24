@@ -5,7 +5,7 @@
 incident_repo_pgx.go                    [DONE]
 user_repo_pgx.go                        [DONE]
 asset_repo_pgx.go                       [DONE]
-verification_repo_pgx.go                [PENDING]
+verification_repo_pgx.go                [DONE]
 culprit_repo_pgx.go                     [PENDING]
 messaging_repo_pgx.go                   [PENDING]
 target_repo_pgx.go                      [PENDING]
