@@ -10,3 +10,7 @@ culprit_repo_pgx.go                     [DONE]
 messaging_repo_pgx.go                   [DONE]
 target_repo_pgx.go                      [DONE]
 comment_repo_pgx.go                     [DONE]
+
+4. Rewriting tests
+user_repo_pgx_test.go                   [DONE]
+incident_repo_pgx_test.go               [DONE]
