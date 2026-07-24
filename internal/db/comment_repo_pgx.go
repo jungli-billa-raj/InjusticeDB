@@ -18,18 +18,19 @@ func NewPostgresCommentRepository(pool *pgxpool.Pool) *PostgresCommentRepository
 }
 
 // CreateComment posts a new comment on an incident.
-func (r *PostgresCommentRepository) CreateComment(ctx context.Context, incidentID, userID uuid.UUID, content string) (*models.Comment, error) {
+func (r *PostgresCommentRepository) CreateComment(ctx context.Context, incidentID, userID uuid.UUID, parentID *uuid.UUID, content string) (*models.Comment, error) {
 	query := `
-		INSERT INTO comments (incident_id, user_id, content)
-		VALUES ($1, $2, $3)
-		RETURNING id, incident_id, user_id, content, created_at;
+		INSERT INTO comments (incident_id, user_id, parent_id, content)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id, incident_id, user_id, parent_id, content, created_at;
 	`
 
 	var comment models.Comment
-	err := r.pool.QueryRow(ctx, query, incidentID, userID, content).Scan(
+	err := r.pool.QueryRow(ctx, query, incidentID, userID, parentID, content).Scan(
 		&comment.ID,
 		&comment.IncidentID,
 		&comment.UserID,
+		&comment.ParentID,
 		&comment.Content,
 		&comment.CreatedAt,
 	)

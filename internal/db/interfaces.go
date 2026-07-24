@@ -62,7 +62,7 @@ type MessagingRepository interface {
 
 // CommentRepository handles incident discussion threads
 type CommentRepository interface {
-	CreateComment(ctx context.Context, incidentID, userID uuid.UUID, content string) (*models.Comment, error)
+	CreateComment(ctx context.Context, incidentID, userID uuid.UUID, parentID *uuid.UUID, content string) (*models.Comment, error)
 	ListCommentsByIncident(ctx context.Context, incidentID uuid.UUID, limit, offset int) ([]*models.Comment, error)
 }
 
