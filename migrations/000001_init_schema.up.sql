@@ -83,6 +83,7 @@ CREATE TABLE assets (
     url TEXT NOT NULL,
     archive_url TEXT,
     uploaded_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    deleted_at TIMESTAMPTZ
 );
 
 -- 8. COMMENTS TABLE
@@ -136,7 +137,7 @@ CREATE INDEX idx_comments_incident_id ON comments(incident_id);
 CREATE INDEX idx_incident_culprits_person_id ON incident_culprits(person_id);
 CREATE INDEX idx_conversations_users ON conversations(user_one_id, user_two_id);
 CREATE INDEX idx_messages_conversation ON messages(conversation_id, sent_at);
-
+CREATE INDEX idx_assets_incident_active ON assets(incident_id) WHERE deleted_at IS NULL;
 -- ============================================================================
 -- TRIGGERS
 -- ============================================================================
