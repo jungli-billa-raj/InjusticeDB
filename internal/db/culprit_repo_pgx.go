@@ -118,7 +118,7 @@ func (r *PostgresCulpritRepository) GetCulpritsForIncident(ctx context.Context, 
 func (r *PostgresCulpritRepository) UpdateCulpritStatus(ctx context.Context, incidentID uuid.UUID, personID uuid.UUID, status models.CulpritStatus) error {
 	query := `
 		UPDATE incident_culprits
-		SET culprit_status = $1
+		SET culprit_status = $1::culprit_status_type
 		WHERE incident_id = $2 AND person_id = $3;
 	`
 
