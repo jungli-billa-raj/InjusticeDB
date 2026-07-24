@@ -7,14 +7,14 @@ import (
 )
 
 type Comment struct {
-	ID         uuid.UUID `json:"id"`
-	IncidentID uuid.UUID `json:"incident_id"`
-	UserID     uuid.UUID `json:"user_id"`
-	Content    string    `json:"content"`
-	CreatedAt  time.Time `json:"created_at"`
-
-	// Join fields for display
-	UserName string `json:"user_name,omitempty"`
+	ID         uuid.UUID  `json:"id"`
+	IncidentID uuid.UUID  `json:"incident_id"`
+	UserID     uuid.UUID  `json:"user_id"`
+	UserName   string     `json:"user_name"`
+	ParentID   *uuid.UUID `json:"parent_id,omitempty"` // Pointer because top-level comments have NULL parent_id
+	Content    string     `json:"content"`
+	CreatedAt  time.Time  `json:"created_at"`
+	Replies    []*Comment `json:"replies,omitempty"` // Nested children for the frontend tree
 }
 
 type YDCIDCTarget struct {

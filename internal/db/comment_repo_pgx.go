@@ -43,7 +43,7 @@ func (r *PostgresCommentRepository) CreateComment(ctx context.Context, incidentI
 // ListCommentsByIncident fetches comments for an incident with author details.
 func (r *PostgresCommentRepository) ListCommentsByIncident(ctx context.Context, incidentID uuid.UUID, limit, offset int) ([]*models.Comment, error) {
 	query := `
-		SELECT c.id, c.incident_id, c.user_id, c.content, c.created_at, u.name
+		SELECT c.id, c.incident_id, c.user_id, c.parent_id, c.content, c.created_at, u.name
 		FROM comments c
 		JOIN users u ON c.user_id = u.id
 		WHERE c.incident_id = $1
@@ -57,13 +57,14 @@ func (r *PostgresCommentRepository) ListCommentsByIncident(ctx context.Context, 
 	}
 	defer rows.Close()
 
-	var comments []*models.Comment
+	var allComments []*models.Comment
 	for rows.Next() {
 		var c models.Comment
 		err := rows.Scan(
 			&c.ID,
 			&c.IncidentID,
 			&c.UserID,
+			&c.ParentID, // Scan nullable parent_id
 			&c.Content,
 			&c.CreatedAt,
 			&c.UserName,
@@ -71,12 +72,40 @@ func (r *PostgresCommentRepository) ListCommentsByIncident(ctx context.Context, 
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan comment row: %w", err)
 		}
-		comments = append(comments, &c)
+		allComments = append(allComments, &c)
 	}
 
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("row iteration error: %w", err)
 	}
 
-	return comments, nil
+	// Build the nested tree structure
+	return buildCommentTree(allComments), nil
+}
+
+// Helper function to convert flat slice into a nested tree
+func buildCommentTree(flat []*models.Comment) []*models.Comment {
+	commentMap := make(map[uuid.UUID]*models.Comment)
+	var rootComments []*models.Comment
+
+	// Step 1: Map all comments by ID and initialize empty Replies slice
+	for _, c := range flat {
+		c.Replies = []*models.Comment{}
+		commentMap[c.ID] = c
+	}
+
+	// Step 2: Attach children to parents
+	for _, c := range flat {
+		if c.ParentID == nil {
+			// Top-level comment
+			rootComments = append(rootComments, c)
+		} else {
+			// Reply -> Attach to parent if parent exists in map
+			if parent, exists := commentMap[*c.ParentID]; exists {
+				parent.Replies = append(parent.Replies, c)
+			}
+		}
+	}
+
+	return rootComments
 }
