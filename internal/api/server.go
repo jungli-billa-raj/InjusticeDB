@@ -88,5 +88,18 @@ func (s *Server) routes() {
 				r.Patch("/{id}/credibility", s.UpdateUserCredibility)
 			})
 		})
+		r.Route("/incidents", func(r chi.Router) {
+			r.Get("/{id}", s.GetIncidentByID)                                  // Public snapshot
+			r.Get("/{id}/revisions", s.ListIncidentRevisions)                  // Public revision list
+			r.Get("/{id}/revisions/{version}", s.GetIncidentRevisionByVersion) // Public specific version
+
+			// Protected Incident Routes
+			r.Group(func(r chi.Router) {
+				r.Use(s.AuthMiddleware)
+				r.Post("/", s.CreateIncident)
+				r.Post("/{id}/revisions", s.CreateIncidentRevision)
+				r.Patch("/{id}/verification", s.UpdateVerificationStatus)
+			})
+		})
 	})
 }

@@ -97,3 +97,5 @@ func (r *PostgresUserRepository) UpdateCredibility(ctx context.Context, id uuid.
 
 	return nil
 }
+
+// TODO: DeleteUser

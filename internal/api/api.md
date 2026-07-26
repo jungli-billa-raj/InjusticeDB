@@ -21,7 +21,7 @@
 
 ---
 
-### 2. Incidents & Revision History (`/api/v1/incidents`)
+### 2. Incidents & Revision History (`/api/v1/incidents`) [DONE]
 
 * **`POST /api/v1/incidents`** (Protected)
 * Handled by: `IncidentRepository.Create`
@@ -39,7 +39,7 @@
 
 
 
-#### **Revision Version Control Sub-routes:**
+#### **Revision Version Control Sub-routes:** [DONE]
 
 * **`POST /api/v1/incidents/{id}/revisions`** (Protected)
 * Handled by: `IncidentRepository.CreateRevision`

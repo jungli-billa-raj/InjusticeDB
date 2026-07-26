@@ -20,6 +20,16 @@ const (
 	JusticeStalled    JusticeStatus = "stalled"
 )
 
+// IsValid checks if the vote is a recognized option
+func (v VerificationStatus) IsValid() bool {
+	switch v {
+	case VerificationPending, VerificationVerified, VerificationRejected, VerificationDisputed:
+		return true
+	default:
+		return false
+	}
+}
+
 type Incident struct {
 	ID uuid.UUID `json:"id"`
 	// Title              string             `json:"title"`
