@@ -1,3 +1,11 @@
+// @title           InjusticeDB API
+// @version         1.0
+// @description     Public Accountability and Incident Tracking Platform API.
+// @host            localhost:8080
+// @BasePath        /api/v1
+// @securityDefinitions.apikey BearerAuth
+// @in              header
+// @name            Authorization
 package api
 
 import (
@@ -9,6 +17,8 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/jungli-billa-raj/InjusticeDB/internal/archival"
 	"github.com/jungli-billa-raj/InjusticeDB/internal/db"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
+	// _ "github.com/jungli-billa-raj/InjusticeDB/docs"
 )
 
 type Server struct {
@@ -54,16 +64,29 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) routes() {
-	// Health Check Endpoint
 	s.router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		JSON(w, http.StatusOK, map[string]string{"status": "healthy"})
 	})
 
-	// API v1 Sub-Router
+	// Serve Swagger UI at /swagger/index.html
+	s.router.Get("/swagger/*", httpSwagger.Handler(
+		httpSwagger.URL("http://localhost:8080/swagger/doc.json"),
+	))
+
 	s.router.Route("/api/v1", func(r chi.Router) {
-		// Public Auth Routes
+		// Public Auth
 		r.Post("/auth/google", s.HandleGoogleLogin)
 
-		// Additional routes will be attached here
+		// Users Sub-Router
+		r.Route("/users", func(r chi.Router) {
+			r.Post("/upsert", s.CreateOrUpdateUser) // Upsert user profile
+			r.Get("/{id}", s.GetUserProfile)        // Public
+
+			// Protected User Routes (Requires Bearer JWT)
+			r.Group(func(r chi.Router) {
+				r.Use(s.AuthMiddleware)
+				r.Patch("/{id}/credibility", s.UpdateUserCredibility)
+			})
+		})
 	})
 }
