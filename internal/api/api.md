@@ -59,7 +59,7 @@
 
 ---
 
-### 3. Culprits & Entities (`/api/v1/people` & `/api/v1/incidents/{id}/culprits`)
+### 3. Culprits & Entities (`/api/v1/people` & `/api/v1/incidents/{id}/culprits`) [DONE]
 
 * **`POST /api/v1/people`** (Protected)
 * Handled by: `CulpritRepository.CreatePerson`

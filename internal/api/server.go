@@ -77,6 +77,11 @@ func (s *Server) routes() {
 		// Public Auth
 		r.Post("/auth/google", s.HandleGoogleLogin)
 
+		// People Sub-Router
+		r.Route("/people", func(r chi.Router) {
+			r.Use(s.AuthMiddleware)
+			r.Post("/", s.CreatePerson)
+		})
 		// Users Sub-Router
 		r.Route("/users", func(r chi.Router) {
 			r.Post("/upsert", s.CreateOrUpdateUser) // Upsert user profile
@@ -92,6 +97,7 @@ func (s *Server) routes() {
 			r.Get("/{id}", s.GetIncidentByID)                                  // Public snapshot
 			r.Get("/{id}/revisions", s.ListIncidentRevisions)                  // Public revision list
 			r.Get("/{id}/revisions/{version}", s.GetIncidentRevisionByVersion) // Public specific version
+			r.Get("/{id}/culprits", s.GetCulpritsForIncident)                  // Public culprits lookup
 
 			// Protected Incident Routes
 			r.Group(func(r chi.Router) {
@@ -99,6 +105,9 @@ func (s *Server) routes() {
 				r.Post("/", s.CreateIncident)
 				r.Post("/{id}/revisions", s.CreateIncidentRevision)
 				r.Patch("/{id}/verification", s.UpdateVerificationStatus)
+				// Culprit linking & status updates
+				r.Post("/{id}/culprits", s.LinkCulpritToIncident)
+				r.Patch("/{id}/culprits/{person_id}", s.UpdateCulpritStatus)
 			})
 		})
 	})

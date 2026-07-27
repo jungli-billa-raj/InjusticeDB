@@ -15,6 +15,16 @@ const (
 	CulpritConvicted CulpritStatus = "convicted"
 )
 
+// IsValid checks if the vote is a recognized option
+func (s CulpritStatus) IsValid() bool {
+	switch s {
+	case CulpritAccused, CulpritSuspect, CulpritGuilty, CulpritConvicted:
+		return true
+	default:
+		return false
+	}
+}
+
 type Person struct {
 	ID           uuid.UUID `json:"id"`
 	Name         string    `json:"name"`
