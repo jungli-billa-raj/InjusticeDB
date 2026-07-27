@@ -98,6 +98,7 @@ func (s *Server) routes() {
 			r.Get("/{id}/revisions", s.ListIncidentRevisions)                  // Public revision list
 			r.Get("/{id}/revisions/{version}", s.GetIncidentRevisionByVersion) // Public specific version
 			r.Get("/{id}/culprits", s.GetCulpritsForIncident)                  // Public culprits lookup
+			r.Get("/{id}/verifications/tally", s.GetVoteTally)                 // Public vote tally
 
 			// Protected Incident Routes
 			r.Group(func(r chi.Router) {
@@ -108,6 +109,8 @@ func (s *Server) routes() {
 				// Culprit linking & status updates
 				r.Post("/{id}/culprits", s.LinkCulpritToIncident)
 				r.Patch("/{id}/culprits/{person_id}", s.UpdateCulpritStatus)
+				// Crowd verification voting
+				r.Post("/{id}/verifications", s.CastVote)
 			})
 		})
 	})

@@ -84,7 +84,7 @@
 
 ---
 
-### 4. Verification Voting (`/api/v1/incidents/{id}/verifications`)
+### 4. Verification Voting (`/api/v1/incidents/{id}/verifications`) [DONE]
 
 * **`POST /api/v1/incidents/{id}/verifications`** (Protected)
 * Handled by: `VerificationRepository.CastVote`
